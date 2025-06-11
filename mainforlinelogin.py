@@ -29,6 +29,11 @@ def log(msg):
 # === 發送 LINE Messange ===
 def send_line_message(user_id, message):
     token = os.getenv("LINE_CHANNEL_TOKEN")
+
+    # ✅ Debug：印出 token 和 user_id（前幾碼就好）
+    print("▷ Channel Token:", token[:10] + "...")
+    print("▷ User ID:", user_id)
+
     if not token:
         log("❌ LINE_CHANNEL_TOKEN 不存在")
         return
@@ -45,7 +50,16 @@ def send_line_message(user_id, message):
             }
         ]
     }
+
+    # ✅ Debug：送出前印一下
+    print("🟤 正在推播 LINE 給", user_id)
+    print("body:", body)
+
     response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=body)
+
+    # ✅ Debug：印出回應狀態
+    print("response:", response.status_code, response.text)
+
     if response.status_code == 200:
         log("✅ 成功推播 LINE 訊息")
     else:
@@ -76,6 +90,8 @@ def solve_captcha_with_easyocr(captcha_path, debug=False):
 
 # === 主程式 ===
 def main():
+    print("🟢 WTNC Bot 程式啟動")
+
     try:
         LOGIN_URL = 'https://admin.idelivery.com.tw/admin/auth/login'
         ACCOUNT = os.getenv("DM_ACCOUNT")
