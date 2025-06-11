@@ -91,6 +91,16 @@ def main():
         options = webdriver.ChromeOptions()
         options.add_argument("--start-maximized")
 
+        # Railway 用：強制啟用 headless 模式（不開視窗）
+        options.add_argument("--headless")  # ✅ Headless 無頭模式
+        options.add_argument("--no-sandbox")  # ✅ 解決權限問題
+        options.add_argument("--disable-dev-shm-usage")  # ✅ 避免記憶體共享錯誤
+        options.add_argument("--disable-gpu")  # ✅ 有時可提高穩定性
+
+        if not os.getenv("RAILWAY_ENVIRONMENT"):
+            options.add_argument(f"--user-data-dir={mkdtemp()}")
+
+
         if not os.getenv("RAILWAY_ENVIRONMENT"):
             options.add_argument(f"--user-data-dir={mkdtemp()}")
 
