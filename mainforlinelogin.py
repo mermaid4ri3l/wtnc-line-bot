@@ -2,7 +2,6 @@ import os
 import time
 import traceback
 import requests
-import chromedriver_autoinstaller
 import cv2
 import numpy as np
 import re
@@ -15,6 +14,10 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+
 
 # 載入 .env
 load_dotenv()
@@ -104,31 +107,26 @@ def main():
             DOWNLOAD_DIR = os.path.expanduser("~/Desktop/wtnc-report-bot/大麥系統下載每日報表")
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-        options = webdriver.ChromeOptions()
+        options = Options()
         options.add_argument("--start-maximized")
-
-        # Railway 用：強制啟用 headless 模式（不開視窗）
-        options.add_argument("--headless")  # ✅ Headless 無頭模式
-        options.add_argument("--no-sandbox")  # ✅ 解決權限問題
-        options.add_argument("--disable-dev-shm-usage")  # ✅ 避免記憶體共享錯誤
-        options.add_argument("--disable-gpu")  # ✅ 有時可提高穩定性
-
-        if not os.getenv("RAILWAY_ENVIRONMENT"):
-            options.add_argument(f"--user-data-dir={mkdtemp()}")
-
-
-        if not os.getenv("RAILWAY_ENVIRONMENT"):
-            options.add_argument(f"--user-data-dir={mkdtemp()}")
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
 
         prefs = {
-            "download.default_directory": DOWNLOAD_DIR,
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
-        }
+           "download.default_directory": DOWNLOAD_DIR,
+           "download.prompt_for_download": False,
+           "download.directory_upgrade": True,
+           "safebrowsing.enabled": True
+}
         options.add_experimental_option("prefs", prefs)
-        chromedriver_autoinstaller.install()
-        driver = webdriver.Chrome(options=options)
+
+        # 啟動 Driver
+        driver = webdriver.Chrome(
+            service=Service(ChromeDriverManager().install()),
+            options=options
+        )
         wait = WebDriverWait(driver, 20)
         driver.get(LOGIN_URL)
 
