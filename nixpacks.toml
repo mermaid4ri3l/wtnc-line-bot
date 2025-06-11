@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python311", "opencv", "libGL", "glibc", "zlib", "libGLU"]
+nixPkgs = ["python311", "opencv", "libGL", "glibc", "zlib", "libGLU", "mesa"]
 
 [start]
 cmd = "python3 mainforlinelogin.py"
