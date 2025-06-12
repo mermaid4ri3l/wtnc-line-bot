@@ -10,6 +10,7 @@ import shutil
 from datetime import datetime as dt
 from tempfile import mkdtemp
 from dotenv import load_dotenv
+import subprocess
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -30,23 +31,18 @@ def log(msg):
 
 def send_line_message(user_id, message):
     token = os.getenv("LINE_CHANNEL_TOKEN")
-    print("▷ Channel Token:", token[:10] + "...")
-    print("▷ User ID:", user_id)
     if not token:
         log("❌ LINE_CHANNEL_TOKEN 不存在")
         return
     headers = {
-        "Authorization": f"Bearer " + token,
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
     body = {
         "to": user_id,
         "messages": [{"type": "text", "text": message}]
     }
-    print("🟤 正在推播 LINE 給", user_id)
-    print("body:", body)
     response = requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=body)
-    print("response:", response.status_code, response.text)
     if response.status_code == 200:
         log("✅ 成功推播 LINE 訊息")
     else:
@@ -68,43 +64,30 @@ def solve_captcha_with_easyocr(captcha_path, debug=False):
     log(f"🔍 OCR 所有結果：{result}")
 
     for _, text, _ in result:
-        # 清除空白、=號、亂碼
         text_clean = text.replace(" ", "").replace("=", "").replace(",", "").strip()
-
-        # OCR 有可能誤判：像 l → 1、O → 0、B → 8
-        replacements = {
-            'O': '0', 'o': '0', 'I': '1', 'l': '1', 'Z': '2', 'S': '5',
-            'B': '8', 'T': '7'
-        }
-
+        replacements = {'O': '0', 'o': '0', 'I': '1', 'l': '1', 'Z': '2', 'S': '5', 'B': '8', 'T': '7'}
         for wrong, right in replacements.items():
             text_clean = text_clean.replace(wrong, right)
-
-        # 如果有兩組數字，中間只允許一個加號
         match = re.findall(r'\d+', text_clean)
         if len(match) == 2:
             fixed = f"{match[0]}+{match[1]}"
             log(f"✅ 強化後成功辨識並修正：{fixed}")
             return fixed
-
     return ""
 
 def main():
     print("🟢 WTNC Bot 程式啟動")
 
     try:
-        import subprocess
         chromium_version = subprocess.check_output(["chromium", "--version"]).decode().strip()
-        print("🔧 Chromium 版本：", chromium_version)
         chromedriver_version = subprocess.check_output(["chromedriver", "--version"]).decode().strip()
+        print("🔧 Chromium 版本：", chromium_version)
         print("🔧 Chromedriver 版本：", chromedriver_version)
     except Exception as e:
         print("⚠️ 無法取得版本：", e)
 
     CHROMIUM_PATH = shutil.which("chromium")
     CHROMEDRIVER_PATH = shutil.which("chromedriver")
-    print("🔍 chromium 在哪：", CHROMIUM_PATH)
-    print("🔍 chromedriver 在哪：", CHROMEDRIVER_PATH)
 
     try:
         LOGIN_URL = 'https://admin.idelivery.com.tw/admin/auth/login'
@@ -148,30 +131,30 @@ def main():
                     continue
 
                 answer = int(match.group(1)) + int(match.group(2))
-                driver.find_element(By.NAME, 'username').send_keys(ACCOUNT)
+
+                # 填寫表單
+                username_input = driver.find_element(By.NAME, 'username')
+                username_input.clear()
+                username_input.send_keys(ACCOUNT)
                 driver.find_element(By.NAME, 'password').send_keys(PASSWORD)
                 driver.find_element(By.NAME, 'captcha').send_keys(str(answer))
+
+                time.sleep(1)
                 driver.find_element(By.XPATH, "//button[contains(text(), '登入')]").click()
-                time.sleep(3)
+                time.sleep(2)
 
-                # 嘗試抓錯誤訊息
                 try:
-                    error_box = driver.find_element(By.CLASS_NAME, "el-message__content")
-                    log(f"⚠️ 登入失敗訊息：{error_box.text}")
+                    wait.until(EC.presence_of_element_located((By.XPATH, '//span[text()="營業報表"]')))
+                    log("✅ 登入成功")
+                    break  # 登入成功就跳出嘗試迴圈
                 except:
-                    log("❔ 找不到錯誤訊息")
-
-                if "dashboard" in driver.current_url or "overview" in driver.current_url:
                     try:
-                        wait.until(EC.presence_of_element_located((By.XPATH, '//span[text()="營業報表"]')))
-                        log("✅ 登入成功")
-                        break
+                        error_element = driver.find_element(By.XPATH, '//div[contains(text(), "請計算下方算式")]')
+                        log(f"❌ 驗證碼錯誤提示：{error_element.text}")
                     except:
-                        log("❌ 登入後找不到預期頁面元素")
-                        driver.refresh()
-                        continue
-
-                driver.refresh()
+                        log("❔ 登入失敗，但抓不到錯誤提示")
+                    driver.refresh()
+                    continue
 
             except Exception as e:
                 log(f"❌ 登入錯誤：{str(e)}")
@@ -183,7 +166,7 @@ def main():
             driver.quit()
             return
 
-        # 登入成功後進入報表區
+        # 進入報表
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='店家報表']"))).click()
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業報表']"))).click()
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業銷售報表']"))).click()
