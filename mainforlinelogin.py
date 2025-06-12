@@ -132,7 +132,6 @@ def main():
 
                 answer = int(match.group(1)) + int(match.group(2))
 
-                # 填寫表單
                 username_input = driver.find_element(By.NAME, 'username')
                 username_input.clear()
                 username_input.send_keys(ACCOUNT)
@@ -146,13 +145,16 @@ def main():
                 try:
                     wait.until(EC.presence_of_element_located((By.XPATH, '//span[text()="營業報表"]')))
                     log("✅ 登入成功")
-                    break  # 登入成功就跳出嘗試迴圈
+                    break
                 except:
                     try:
-                        error_element = driver.find_element(By.XPATH, '//div[contains(text(), "請計算下方算式")]')
-                        log(f"❌ 驗證碼錯誤提示：{error_element.text}")
+                        # 嘗試抓錯誤提示（常見 class）
+                        error_element = driver.find_element(By.CLASS_NAME, "el-form-item__error")
+                        log(f"❌ 登入錯誤提示：{error_element.text}")
                     except:
                         log("❔ 登入失敗，但抓不到錯誤提示")
+                        html_preview = driver.page_source[:300].replace("\n", "")
+                        log("📄 頁面快照（前300字）：\n" + html_preview)
                     driver.refresh()
                     continue
 
@@ -161,12 +163,13 @@ def main():
                 traceback.print_exc()
                 driver.quit()
                 return
+
         else:
             log("⛔ 所有登入失敗，結束")
             driver.quit()
             return
 
-        # 進入報表
+        # 登入成功後進入報表區
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='店家報表']"))).click()
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業報表']"))).click()
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業銷售報表']"))).click()
