@@ -1,5 +1,15 @@
 [phases.setup]
-nixPkgs = ["python311", "chromium", "chromedriver", "opencv", "libGL", "libGLU", "glibc", "zlib", "mesa"]
+nixPkgs = [
+  "python311",
+  "chromium",
+  "chromedriver",
+  "opencv",
+  "libGL",
+  "libGLU",
+  "glibc",
+  "zlib",
+  "mesa"
+]
 
 [start]
 cmd = "python3 mainforlinelogin.py"
