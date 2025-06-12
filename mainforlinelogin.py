@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import re
 import easyocr
+import shutil
 from datetime import datetime as dt
 from tempfile import mkdtemp
 from dotenv import load_dotenv
@@ -94,6 +95,7 @@ def solve_captcha_with_easyocr(captcha_path, debug=False):
 # === 主程式 ===
 def main():
     print("🟢 WTNC Bot 程式啟動")
+    print("🔍 chromium 在哪：", shutil.which("chromium"))
 
     try:
         LOGIN_URL = 'https://admin.idelivery.com.tw/admin/auth/login'
@@ -108,6 +110,8 @@ def main():
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
         options = Options()
+        options.binary_location = "/usr/bin/chromium"
+
         options.add_argument("--start-maximized")
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
