@@ -59,17 +59,34 @@ def solve_captcha_with_easyocr(captcha_path, debug=False):
     _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     kernel = np.ones((2, 2), np.uint8)
     processed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+
     if debug:
         cv2.imwrite(captcha_path.replace(".png", "_processed.png"), processed)
+
     reader = easyocr.Reader(['en'], gpu=False)
     result = reader.readtext(processed)
     log(f"🔍 OCR 所有結果：{result}")
+
     for _, text, _ in result:
-        text_clean = text.replace(" ", "").replace("=", "")
-        text_fixed = re.sub(r"[^0-9\+]", "+", text_clean)
-        if re.match(r"^\d+\+\d+$", text_fixed):
-            log(f"✅ 成功辨識並修正：{text_fixed}")
-            return text_fixed
+        # 清除空白、=號、亂碼
+        text_clean = text.replace(" ", "").replace("=", "").replace(",", "").strip()
+
+        # OCR 有可能誤判：像 l → 1、O → 0、B → 8
+        replacements = {
+            'O': '0', 'o': '0', 'I': '1', 'l': '1', 'Z': '2', 'S': '5',
+            'B': '8', 'T': '7'
+        }
+
+        for wrong, right in replacements.items():
+            text_clean = text_clean.replace(wrong, right)
+
+        # 如果有兩組數字，中間只允許一個加號
+        match = re.findall(r'\d+', text_clean)
+        if len(match) == 2:
+            fixed = f"{match[0]}+{match[1]}"
+            log(f"✅ 強化後成功辨識並修正：{fixed}")
+            return fixed
+
     return ""
 
 def main():
