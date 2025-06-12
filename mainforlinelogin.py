@@ -168,10 +168,40 @@ def main():
                 driver.quit()
                 return
 
-        else:
+                else:
             log("⛔ 所有登入失敗，結束")
             driver.quit()
             return
+
+        # 🔽 如果登入成功，繼續點選報表
+        try:
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='店家報表']"))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業報表']"))).click()
+            wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業銷售報表']"))).click()
+            time.sleep(2)
+
+            net_element = wait.until(EC.presence_of_element_located(
+                (By.XPATH, "//div[contains(@class, 'priceArea') and contains(text(), '$')]")
+            ))
+            net_value = net_element.text.strip().replace("$", "").replace(",", "")
+            log(f"📊 銷售淨額：{net_value}")
+
+            # 推播 LINE
+            user_id = os.getenv("LINE_USER_ID")
+            message = f"📢 {dt.now().strftime('%H:%M')} 業績回報: ${net_value}"
+            send_line_message(user_id, message)
+
+            driver.quit()
+            log("🎉 完成任務")
+
+        except Exception as e:
+            log(f"❌ 登入後報表處理錯誤：{str(e)}")
+            traceback.print_exc()
+            driver.quit()
+
+    except Exception as e:
+        log(f"❌ 主流程發生錯誤：{str(e)}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
