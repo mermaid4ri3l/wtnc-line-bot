@@ -121,21 +121,23 @@ def main():
                 captcha_path = os.path.join(DOWNLOAD_DIR, 'captcha.png')
                 captcha_element.screenshot(captcha_path)
                 captcha_text = solve_captcha_with_easyocr(captcha_path, DEBUG)
+
                 if not captcha_text:
+                    log("⚠️ 無法辨識驗證碼，刷新")
                     driver.refresh()
                     continue
 
                 match = re.match(r"(\d+)\+(\d+)", captcha_text)
                 if not match:
+                    log(f"⚠️ 驗證碼格式錯誤：{captcha_text}")
                     driver.refresh()
                     continue
 
                 answer = int(match.group(1)) + int(match.group(2))
 
                 # 填寫表單
-                username_input = driver.find_element(By.NAME, 'username')
-                username_input.clear()
-                username_input.send_keys(ACCOUNT)
+                driver.find_element(By.NAME, 'username').clear()
+                driver.find_element(By.NAME, 'username').send_keys(ACCOUNT)
                 driver.find_element(By.NAME, 'password').send_keys(PASSWORD)
                 driver.find_element(By.NAME, 'captcha').send_keys(str(answer))
 
@@ -143,69 +145,60 @@ def main():
                 driver.find_element(By.XPATH, "//button[contains(text(), '登入')]").click()
                 time.sleep(2)
 
+                current_url = driver.current_url
+                if "login" in current_url:
+                    log("❌ 登入失敗（仍在登入頁）")
+                    try:
+                        error_element = driver.find_element(By.XPATH, '//div[contains(text(), "請計算下方算式")]')
+                        log(f"❌ 錯誤提示：{error_element.text}")
+                    except:
+                        log("❔ 登入失敗，無錯誤提示")
+                    screenshot_path = os.path.join(DOWNLOAD_DIR, f"login_fail_{attempt}.png")
+                    driver.save_screenshot(screenshot_path)
+                    log(f"📸 已儲存第 {attempt} 次失敗截圖：{screenshot_path}")
+                    driver.refresh()
+                    continue
+
                 try:
                     wait.until(EC.presence_of_element_located((By.XPATH, '//span[text()="營業報表"]')))
                     log("✅ 登入成功")
-                    break  # 登入成功就跳出嘗試迴圈
+                    break
                 except:
-                    try:
-                        error_element = driver.find_element(By.XPATH, '//div[contains(text(), "請計算下方算式")]')
-                        log(f"❌ 驗證碼錯誤提示：{error_element.text}")
-                    except:
-                        log("❔ 登入失敗，但抓不到錯誤提示")
+                    log("❌ 登入後找不到『營業報表』")
+                    screenshot_path = os.path.join(DOWNLOAD_DIR, f"login_fail_{attempt}.png")
+                    driver.save_screenshot(screenshot_path)
                     driver.refresh()
                     continue
 
             except Exception as e:
-                log(f"❌ 登入錯誤：{str(e)}")
+                log(f"❌ 登入異常：{str(e)}")
                 traceback.print_exc()
                 driver.quit()
                 return
+
         else:
-            log("⛔ 所有登入失敗，結束")
+            log("⛔ 所有登入嘗試失敗")
             driver.quit()
             return
 
-        # 進入報表
+        # 登入後點擊報表
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='店家報表']"))).click()
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業報表']"))).click()
         wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='營業銷售報表']"))).click()
         time.sleep(2)
-        
-        # 登入後判斷 URL 是否還是登入頁
-        current_url = driver.current_url
-        if "login" in current_url:
-            log("❌ 登入失敗（URL 尚在登入頁）")
-            screenshot_path = os.path.join(DOWNLOAD_DIR, f"login_fail_{attempt}.png")
-            driver.save_screenshot(screenshot_path)
-            log(f"📸 已儲存第 {attempt} 次失敗截圖：{screenshot_path}")
-            driver.refresh()
-            continue
-        else:
-            # 嘗試進一步確認登入成功
-            try:
-                wait.until(EC.presence_of_element_located((By.XPATH, '//span[text()="營業報表"]')))
-                log("✅ 登入成功")
-                success = True
-                break
-            except:
-                log("❌ 登入後找不到營業報表 tab，判斷為失敗")
-                screenshot_path = os.path.join(DOWNLOAD_DIR, f"login_fail_{attempt}.png")
-                driver.save_screenshot(screenshot_path)
-                log(f"📸 已儲存第 {attempt} 次失敗截圖：{screenshot_path}")
-                driver.refresh()
-                continue
-                
+
+        # 讀取銷售額
         net_element = wait.until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'priceArea') and contains(text(), '$')]")))
         net_value = net_element.text.strip().replace("$", "").replace(",", "")
         log(f"📊 銷售淨額：{net_value}")
 
+        # 發送 LINE 推播
         user_id = os.getenv("LINE_USER_ID")
         message = f"📢 {dt.now().strftime('%H:%M')} 業績回報: ${net_value}"
         send_line_message(user_id, message)
 
         driver.quit()
-        log("🎉 完成任務")
+        log("🎉 任務完成")
 
     except Exception as e:
         log(f"❌ 發生錯誤：{str(e)}")
