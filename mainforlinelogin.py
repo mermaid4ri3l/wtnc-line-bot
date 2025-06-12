@@ -16,9 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
-
 
 # 載入 .env
 load_dotenv()
@@ -95,7 +93,8 @@ def solve_captcha_with_easyocr(captcha_path, debug=False):
 # === 主程式 ===
 def main():
     print("🟢 WTNC Bot 程式啟動")
-    print("🔍 chromium 在哪：", shutil.which("chromium"))
+    CHROMIUM_PATH = shutil.which("chromium")
+    print("🔍 chromium 在哪：", CHROMIUM_PATH)
 
     try:
         LOGIN_URL = 'https://admin.idelivery.com.tw/admin/auth/login'
@@ -110,7 +109,7 @@ def main():
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
         options = Options()
-        options.binary_location = "/usr/bin/chromium"
+        options.binary_location = CHROMIUM_PATH  # 手動指定 chromium 路徑
 
         options.add_argument("--start-maximized")
         options.add_argument("--headless")
@@ -126,9 +125,11 @@ def main():
 }
         options.add_experimental_option("prefs", prefs)
 
+        CHROMEDRIVER_PATH = "/usr/bin/chromedriver"  # 預設 Railway 上會在這
+
         # 啟動 Driver
         driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
+            service=Service(CHROMEDRIVER_PATH),
             options=options
         )
         wait = WebDriverWait(driver, 20)
