@@ -100,6 +100,8 @@ def main():
         PASSWORD = os.getenv("DM_PASSWORD")
         DEBUG = False
 
+        DOWNLOAD_DIR = mkdtemp() 
+
         options = Options()
         options.binary_location = CHROMIUM_PATH
         options.add_argument("--headless")
